@@ -382,3 +382,88 @@ end
     
 end
 endmodule
+
+9.  module fifo (
+ input wire clk, // Clock signal
+ input wire reset, // Reset signal
+ input wire write_en, // Write enable signal
+ input wire read_en, // Read enable signal
+ input wire [7:0] data_in, // Data input
+ output reg [7:0] data_out, // Data output
+ output reg full, // Full flag output
+ output reg empty // Empty flag output
+);
+parameter DEPTH = 8; // Depth of the FIFO
+reg [7:0] memory [0:DEPTH-1];
+reg [3:0] write_ptr, read_ptr;
+reg [3:0] count;
+always @(posedge clk or posedge reset) begin
+ if (reset) begin
+ write_ptr <= 0;
+ read_ptr <= 0;
+ count <= 0;
+ full <= 0;
+ empty <= 1;
+ end 
+ else begin
+ 
+ // Write operation
+ if (write_en && !full) begin
+ memory[write_ptr] <= data_in;
+ write_ptr <= write_ptr + 1;
+ count <= count + 1;
+ if (count == DEPTH)
+ full <= 1;
+ empty <= 0;
+ end
+ // Read operation
+ if (read_en && !empty) begin
+ data_out <= memory[read_ptr];
+ read_ptr <= read_ptr + 1;
+ count <= count - 1;
+ if (count == 1)
+ empty <= 1;
+ full <= 1;
+ end
+ end
+end
+endmodule
+
+module fifo_tb;
+reg clk = 0;
+reg reset = 1;
+reg write_en = 0;
+reg read_en = 0;
+reg [7:0] data_in = 0;
+wire [7:0] data_out;
+wire full;
+wire empty;
+integer i;
+// Instantiate the FIFO module
+fifo fifo_inst ( .clk(clk),.reset(reset),.write_en(write_en), .read_en(read_en),.data_in(data_in),
+ .data_out(data_out), .full(full), .empty(empty));
+// Clock generation
+initial 
+begin
+clk=1;
+forever #5 clk = ~clk;
+end
+initial begin
+ reset = 1;
+ #10 reset = 0;
+ write_en = 1;
+ for ( i = 0; i < 8; i = i + 1) begin
+ data_in = i;
+ #10;
+ end
+ write_en = 0;
+ read_en = 1;
+ #80;
+ read_en = 0;
+ #200 $finish;
+end
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
+  end
+endmodule
